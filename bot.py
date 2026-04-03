@@ -25,23 +25,41 @@ def save():
     with open("data.json", "w") as f:
         json.dump(products, f)
 
-# جلب السعر
-def get_price(url):
-    headers = {"User-Agent": "Mozilla/5.0"}
+# جلب السعرdef get_price(url):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
+
     r = requests.get(url, headers=headers)
     soup = BeautifulSoup(r.text, "html.parser")
 
-    price = soup.select_one(".a-price-whole")
+    # الطريقة 1
+    price = soup.select_one(".a-price .a-offscreen")
     if price:
-        return int(price.text.replace(",", "").strip())
-
-    price2 = soup.select_one(".a-offscreen")
-    if price2:
-        txt = price2.text.replace("جنيه", "").replace(",", "").strip()
+        txt = price.text.replace("جنيه", "").replace(",", "").strip()
         try:
             return int(float(txt))
         except:
-            return None
+            pass
+
+    # الطريقة 2
+    price = soup.select_one("#priceblock_ourprice")
+    if price:
+        txt = price.text.replace("جنيه", "").replace(",", "").strip()
+        try:
+            return int(float(txt))
+        except:
+            pass
+
+    # الطريقة 3
+    price = soup.select_one("#priceblock_dealprice")
+    if price:
+        txt = price.text.replace("جنيه", "").replace(",", "").strip()
+        try:
+            return int(float(txt))
+        except:
+            pass
 
     return None
 
