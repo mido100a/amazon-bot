@@ -6,8 +6,8 @@ import threading
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-# 🔑 حط التوكن هنا
-TOKEN ="8625366148:AAFmnyHPEjWpe4Din_e565FsSVxdB2hTTnY"
+# 🔑 ضع التوكن هنا
+TOKEN = "8625366148:AAFmnyHPEjWpe4Din_e565FsSVxdB2hTTnY"
 
 products = {}
 
@@ -25,41 +25,24 @@ def save():
     with open("data.json", "w") as f:
         json.dump(products, f)
 
-# جلب السعرdef get_price(url):
+# 🔥 جلب السعر (محدث وقوي)
+def get_price(url):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         "Accept-Language": "en-US,en;q=0.9"
     }
 
-    r = requests.get(url, headers=headers)
-    soup = BeautifulSoup(r.text, "html.parser")
+    try:
+        r = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(r.text, "html.parser")
 
-    # الطريقة 1
-    price = soup.select_one(".a-price .a-offscreen")
-    if price:
-        txt = price.text.replace("جنيه", "").replace(",", "").strip()
-        try:
+        price = soup.select_one(".a-price .a-offscreen")
+        if price:
+            txt = price.text.replace("جنيه", "").replace(",", "").strip()
             return int(float(txt))
-        except:
-            pass
 
-    # الطريقة 2
-    price = soup.select_one("#priceblock_ourprice")
-    if price:
-        txt = price.text.replace("جنيه", "").replace(",", "").strip()
-        try:
-            return int(float(txt))
-        except:
-            pass
-
-    # الطريقة 3
-    price = soup.select_one("#priceblock_dealprice")
-    if price:
-        txt = price.text.replace("جنيه", "").replace(",", "").strip()
-        try:
-            return int(float(txt))
-        except:
-            pass
+    except:
+        return None
 
     return None
 
@@ -68,12 +51,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.application.bot_data.setdefault("users", set()).add(update.effective_chat.id)
     await update.message.reply_text("👋 أهلاً بيك\nاستخدم /add لإضافة منتج")
 
-# إضافة منتج
+# 🔥 إضافة منتج (محلولة بالكامل)
 async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         text = update.message.text
 
-        # إزالة /add من النص
         parts = text.replace("/add", "").strip().split()
 
         if len(parts) < 2:
@@ -99,6 +81,7 @@ async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await update.message.reply_text(f"❌ خطأ:\n{e}")
+
 # عرض المنتجات
 async def list_products(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not products:
@@ -114,28 +97,29 @@ async def list_products(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # حذف منتج
 async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        url = context.args[0]
-        products.pop(url)
+        text = update.message.text
+        url = text.replace("/remove", "").strip()
+
+        products.pop(url, None)
         save()
+
         await update.message.reply_text("🗑️ تم الحذف")
     except:
         await update.message.reply_text("❌ اكتب اللينك")
 
-# متابعة الأسعار
+# 🔥 متابعة الأسعار
 async def check_prices(app):
     while True:
         for url, data in products.items():
             price = get_price(url)
 
-            if price and data["last"]:
-                # انخفاض
+            if price:
                 if price < data["last"]:
                     await app.bot.send_message(
                         chat_id=list(app.bot_data["users"])[0],
                         text=f"🔻 السعر نزل!\n{url}\n💰 {data['last']} → {price}"
                     )
 
-                # زيادة
                 elif price > data["last"]:
                     await app.bot.send_message(
                         chat_id=list(app.bot_data["users"])[0],
@@ -162,7 +146,7 @@ def main():
     app.add_handler(CommandHandler("list", list_products))
     app.add_handler(CommandHandler("remove", remove))
 
-    # تشغيل المتابعة بدون crash
+    # تشغيل التتبع بدون crash
     threading.Thread(target=run_checker, args=(app,), daemon=True).start()
 
     app.run_polling()
