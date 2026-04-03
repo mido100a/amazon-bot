@@ -71,23 +71,34 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # إضافة منتج
 async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        url = context.args[0]
-        target = int(context.args[1])
+        text = update.message.text
+
+        # إزالة /add من النص
+        parts = text.replace("/add", "").strip().split()
+
+        if len(parts) < 2:
+            await update.message.reply_text("❌ استخدم:\n/add link price")
+            return
+
+        url = parts[0]
+        target = int(parts[1])
 
         price = get_price(url)
 
         products[url] = {
             "target": target,
-            "last": price
+            "last": price if price else target
         }
 
         save()
 
-        await update.message.reply_text(f"✅ تمت الإضافة\nالسعر الحالي: {price}")
+        if price:
+            await update.message.reply_text(f"✅ تمت الإضافة\n💰 السعر الحالي: {price}")
+        else:
+            await update.message.reply_text("⚠️ تمت الإضافة لكن لم أستطع قراءة السعر الآن")
 
-    except:
-        await update.message.reply_text("❌ استخدم:\n/add link price")
-
+    except Exception as e:
+        await update.message.reply_text(f"❌ خطأ:\n{e}")
 # عرض المنتجات
 async def list_products(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not products:
